@@ -44,6 +44,9 @@ public class SerialReader : MonoBehaviour{
 
 	public bool listen;
 	public bool autoStart;
+
+	private bool isReading = false;
+	
 	private Coroutine serialListener;
 
 	[SerializeField]
@@ -98,11 +101,16 @@ public class SerialReader : MonoBehaviour{
 		return connectedKiwriousSensors;
 	}
 
-	public void StartSerialReader() {
+	public void StartSerialReader()
+	{
+		isReading = true;
 		serialListener = StartCoroutine(ScanPorts());
 	}
 
-	public void StopSerialReader() {
+	public void StopSerialReader()
+	{
+		isReading = false;
+
 		if (serialListener != null)
 		{
 			StopCoroutine(serialListener);
@@ -126,8 +134,11 @@ public class SerialReader : MonoBehaviour{
 		}
 	}
 
-	IEnumerator ScanPorts() {
-		while (listen) {
+	IEnumerator ScanPorts()
+	{
+		Debug.Log("Scanning ports");
+		while (listen && isReading)
+		{
 			yield return new WaitForSeconds(1);
             string[] ports = SerialPort.GetPortNames();
             if (ports.Length > connectedSerialPorts.Length)
@@ -215,11 +226,18 @@ public class SerialReader : MonoBehaviour{
 		bool headerFound = false;
 		List<int> buffer = new List<int>();
 
-		while (stream.IsOpen)
+		while (stream.IsOpen && isReading)
 		{
 			// new reading method
 			while (!headerFound && attempts < MAX_RETRY_ATTEMPTS)
 			{
+				if (!isReading)
+				{
+					stream.Close();
+					return;
+				}
+
+
 				attempts++;
 				Debug.Log($"Searching for the header {port}");
 
@@ -332,7 +350,8 @@ public class SerialReader : MonoBehaviour{
 	}
 
 	void OnDisable() {
-		StopSerialReader();
+		//StopSerialReader();
+		isReading = false;
 	}
 
 	public byte[] GetSensorRawData() {
